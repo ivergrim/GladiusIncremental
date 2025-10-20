@@ -1,16 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gladius Incremental</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <main class="container">
-      <h1>Gladius Incremental</h1>
-      <p id="coin-counter" aria-live="polite">Coins: 0</p>
-      <button id="fight-btn" type="button">Fight peasant farmer</button>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main class="layout">
+        <section class="fight-area">
+            <h1>Gladius Incremental</h1>
+            <button id="fight-btn" type="button">Fight peasant farmer</button>
+        </section>
+        <aside class="sidebar">
+            <p class="coin-display">Coins: <span id="coin-counter" role="status" aria-live="polite">0</span></p>
+            <section id="shop-panel" class="shop" hidden>
+                <h2 class="shop-title">Village shop</h2>
+                <ul class="shop-items">
+                    <li class="shop-item" data-item="wooden-club" hidden>
+                        <div class="shop-item-text">
+                            <span class="item-name">Wooden club</span>
+                            <p class="item-description">Fight 10% faster.</p>
+                        </div>
+                        <button id="wooden-club-btn" type="button" class="shop-buy-btn" aria-label="Buy Wooden club for 5 coins">5 coins</button>
+                    </li>
+                </ul>
+                <p id="shop-empty" class="shop-empty" hidden>No items available</p>
+            </section>
+        </aside>
     </main>
     <script src="main.js"></script>
-  </body>
+</body>
 </html>

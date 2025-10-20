@@ -1,48 +1,182 @@
 * {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
 body {
-  background-color: #000;
-  color: #fff;
-  font-family: Arial, Helvetica, sans-serif;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
+    background-color: #000;
+    color: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
 }
 
-.container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.25rem;
+.layout {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 6rem;
+}
+
+.fight-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+    text-align: center;
+}
+
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.5rem;
+    min-width: 240px;
 }
 
 .coin-display {
-  font-size: 1.125rem;
+    font-size: 1.125rem;
+    text-align: left;
 }
 
 #fight-btn {
-  background-color: transparent;
-  border: 2px solid #fff;
-  color: #fff;
-  padding: 0.75rem 1.75rem;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease;
+    --progress: 0;
+    position: relative;
+    overflow: hidden;
+    background-color: transparent;
+    border: 2px solid #fff;
+    color: #fff;
+    padding: 0.75rem 1.75rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+    isolation: isolate;
 }
 
-#fight-btn:hover {
-  background-color: #fff;
-  color: #000;
-  outline: none;
+#fight-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: calc(var(--progress) * 1%);
+    background-color: rgba(255, 255, 255, 0.35);
+    pointer-events: none;
+    z-index: -1;
+}
+
+#fight-btn:not(:disabled):hover {
+    background-color: #fff;
+    color: #000;
+    outline: none;
+}
+
+#fight-btn:disabled {
+    cursor: default;
 }
 
 #fight-btn:focus-visible {
-  outline: 3px solid #fff;
-  outline-offset: 2px;
+    outline: 3px solid #fff;
+    outline-offset: 2px;
+}
+
+#shop-panel[hidden] {
+    display: none;
+}
+
+.shop {
+    border: 2px solid #fff;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    min-width: 240px;
+}
+
+.shop-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.shop-items {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.shop-item {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.shop-item-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.item-name {
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.item-price {
+    font-size: 0.9rem;
+}
+
+.item-description {
+    font-size: 0.9rem;
+}
+
+.shop-buy-btn {
+    background-color: transparent;
+    border: 2px solid #fff;
+    color: #fff;
+    padding: 0.5rem 1rem;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.shop-buy-btn:not(:disabled):hover {
+    background-color: #fff;
+    color: #000;
+    outline: none;
+}
+
+.shop-buy-btn:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.shop-buy-btn:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+    .layout {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .sidebar {
+        width: 100%;
+        max-width: 360px;
+    }
+
+    .shop {
+        width: 100%;
+        max-width: 360px;
+    }
 }
