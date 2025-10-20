@@ -18,20 +18,25 @@ body {
 .container {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.coin-display {
+  font-size: 1.125rem;
 }
 
 #fight-btn {
   background-color: transparent;
   border: 2px solid #fff;
   color: #fff;
-  padding: 0.75rem 1.5rem;
+  padding: 0.75rem 1.75rem;
   font-size: 1rem;
   cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-#fight-btn:hover,
-#fight-btn:focus {
+#fight-btn:hover {
   background-color: #fff;
   color: #000;
   outline: none;
