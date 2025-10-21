@@ -25,7 +25,9 @@ function ensureInventorySectionOrder() {
 
 ensureInventorySectionOrder();
 
-const SIXTY_NINE_LEAF_KEY = 'owned_sixtynine_leaf_clover';
+localStorage.removeItem('owned_sixtynine_leaf_clover');
+localStorage.removeItem('revealed_owned_sixtynine_leaf_clover');
+localStorage.removeItem('purchased_ts_owned_sixtynine_leaf_clover');
 
 const ALL_ITEMS = [
     {
@@ -50,14 +52,6 @@ const ALL_ITEMS = [
         price: 10,
         description: '10% chance to gain +1 extra coin.',
         effects: { doubleLootChance: 0.1 },
-        itemType: 'Clover'
-    },
-    {
-        key: SIXTY_NINE_LEAF_KEY,
-        name: 'Sixtynine-leaf clover',
-        price: 5,
-        description: '50% chance to gain +100 coins per fight.',
-        effects: { jackpotChance: 0.5, jackpotAmount: 100 },
         itemType: 'Clover'
     }
 ];
@@ -125,11 +119,6 @@ const revealed = {};
 ALL_ITEMS.forEach((item) => {
     revealed[item.key] = localStorage.getItem(`revealed_${item.key}`) === 'true';
 });
-
-if (!revealed[SIXTY_NINE_LEAF_KEY]) {
-    revealed[SIXTY_NINE_LEAF_KEY] = true;
-    localStorage.setItem(`revealed_${SIXTY_NINE_LEAF_KEY}`, 'true');
-}
 
 normalizeOwnedByType();
 
@@ -233,10 +222,6 @@ function renderShop() {
             return ownsWoodenClub || coins >= item.price;
         }
 
-        if (item.key === SIXTY_NINE_LEAF_KEY) {
-            return true;
-        }
-
         return revealed[item.key] || coins >= item.price;
     });
 
@@ -333,13 +318,9 @@ function renderInventory() {
             if (typeof effects.doubleLootChance === 'number') {
                 acc.doubleLootChance += effects.doubleLootChance;
             }
-            if (typeof effects.jackpotChance === 'number' && effects.jackpotChance > 0) {
-                acc.jackpotChance = effects.jackpotChance;
-                acc.jackpotAmount = effects.jackpotAmount || 0;
-            }
             return acc;
         },
-        { speedPercent: 0, doubleLootChance: 0, jackpotChance: 0, jackpotAmount: 0 }
+        { speedPercent: 0, doubleLootChance: 0 }
     );
 
     inventoryItemsList.innerHTML = '';
@@ -402,14 +383,6 @@ function renderInventory() {
         inventoryEffects.appendChild(lootLine);
     }
 
-    if (totals.jackpotChance > 0 && totals.jackpotAmount > 0) {
-        const jackpotPercent = Math.round(totals.jackpotChance * 100);
-        const jackpotLine = document.createElement('p');
-        jackpotLine.className = 'inventory-effect-line';
-        jackpotLine.textContent = `Jackpot: ${jackpotPercent}% for +${totals.jackpotAmount} coins`;
-        inventoryEffects.appendChild(jackpotLine);
-    }
-
     const itemsSection = inventoryItemsList.parentElement;
     const effectsSection = inventoryEffects.parentElement;
     const parentSection = itemsSection && effectsSection ? itemsSection.parentElement : null;
@@ -448,24 +421,6 @@ function currentLootBonusChance() {
     );
 }
 
-function currentJackpotEffect() {
-    for (const item of ALL_ITEMS) {
-        if (!owned[item.key]) {
-            continue;
-        }
-
-        const effects = item.effects || {};
-        if (typeof effects.jackpotChance === 'number' && effects.jackpotChance > 0) {
-            return {
-                jackpotChance: effects.jackpotChance,
-                jackpotAmount: effects.jackpotAmount || 0
-            };
-        }
-    }
-
-    return null;
-}
-
 function setProgress(value) {
     fightButton.style.setProperty('--progress', String(value));
 }
@@ -478,17 +433,6 @@ function finishFight() {
     }
 
     coins += coinsEarned;
-
-    const jackpot = currentJackpotEffect();
-    if (
-        jackpot &&
-        jackpot.jackpotChance > 0 &&
-        Math.random() < jackpot.jackpotChance &&
-        jackpot.jackpotAmount > 0
-    ) {
-        coins += jackpot.jackpotAmount;
-    }
-
     localStorage.setItem('coins', String(coins));
     unlockShopIfEligible();
     ensureInventoryUnlocked();
