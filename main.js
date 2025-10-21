@@ -36,6 +36,11 @@ ALL_ITEMS.forEach((item) => {
     owned[item.key] = localStorage.getItem(item.key) === 'true';
 });
 
+const revealed = {};
+ALL_ITEMS.forEach((item) => {
+    revealed[item.key] = localStorage.getItem(`revealed_${item.key}`) === 'true';
+});
+
 const INVENTORY_UNLOCK_KEY = 'inventory_unlocked';
 const SHOP_UNLOCK_KEY = 'shop_unlocked';
 let inventoryUnlocked = localStorage.getItem(INVENTORY_UNLOCK_KEY) === 'true';
@@ -110,7 +115,16 @@ function renderShop() {
 
     shopList.innerHTML = '';
 
-    const visibleItems = ALL_ITEMS.filter((item) => !owned[item.key] && coins >= item.price);
+    ALL_ITEMS.forEach((item) => {
+        if (!revealed[item.key] && coins >= item.price) {
+            revealed[item.key] = true;
+            localStorage.setItem(`revealed_${item.key}`, 'true');
+        }
+    });
+
+    const visibleItems = ALL_ITEMS.filter(
+        (item) => !owned[item.key] && (revealed[item.key] || coins >= item.price)
+    );
 
     visibleItems.forEach((item) => {
         const li = document.createElement('li');
