@@ -6,6 +6,25 @@ const inventoryItemsList = document.getElementById('inventory-items');
 const shopPanel = document.getElementById('shop-panel');
 const shopEmptyMessage = document.getElementById('shop-empty');
 
+function ensureInventorySectionOrder() {
+    if (!inventoryPanel || !inventoryItemsList || !inventoryEffects) {
+        return;
+    }
+
+    const itemsSection = inventoryItemsList.closest('.inventory-section');
+    const effectsSection = inventoryEffects.closest('.inventory-section');
+
+    if (
+        itemsSection &&
+        effectsSection &&
+        (itemsSection.compareDocumentPosition(effectsSection) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+    ) {
+        inventoryPanel.insertBefore(itemsSection, effectsSection);
+    }
+}
+
+ensureInventorySectionOrder();
+
 const ALL_ITEMS = [
     {
         key: 'owned_wooden_club',
@@ -37,6 +56,10 @@ let coins = Number(localStorage.getItem('coins')) || 0;
 const owned = {};
 ALL_ITEMS.forEach((item) => {
     owned[item.key] = localStorage.getItem(item.key) === 'true';
+});
+const retired = {};
+ALL_ITEMS.forEach((item) => {
+    retired[item.key] = localStorage.getItem(`retired_${item.key}`) === 'true';
 });
 const purchaseTimestamps = {};
 ALL_ITEMS.forEach((item) => {
@@ -186,13 +209,17 @@ function renderShop() {
         }
     });
 
-    const visibleItems = ALL_ITEMS.filter(
-        (item) =>
-            !owned[item.key] &&
-            (item.key === 'owned_spiky_club'
-                ? ownsWoodenClub || coins >= item.price
-                : revealed[item.key] || coins >= item.price)
-    );
+    const visibleItems = ALL_ITEMS.filter((item) => {
+        if (owned[item.key] || retired[item.key]) {
+            return false;
+        }
+
+        if (item.key === 'owned_spiky_club') {
+            return ownsWoodenClub || coins >= item.price;
+        }
+
+        return revealed[item.key] || coins >= item.price;
+    });
 
     visibleItems.forEach((item) => {
         const li = document.createElement('li');
@@ -256,6 +283,8 @@ function buyItem(key) {
         localStorage.removeItem(equipped.key);
         purchaseTimestamps[equipped.key] = 0;
         localStorage.removeItem(`purchased_ts_${equipped.key}`);
+        retired[equipped.key] = true;
+        localStorage.setItem(`retired_${equipped.key}`, 'true');
     });
 
     coins -= item.price;
@@ -289,23 +318,6 @@ function renderInventory() {
         },
         { speedPercent: 0, doubleLootChance: 0 }
     );
-
-    inventoryEffects.innerHTML = '';
-
-    if (totals.speedPercent > 0) {
-        const speedLine = document.createElement('p');
-        speedLine.className = 'inventory-effect-line';
-        speedLine.textContent = `Fight speed: +${totals.speedPercent}%`;
-        inventoryEffects.appendChild(speedLine);
-    }
-
-    const doubleLootPercent = Math.round(Math.min(totals.doubleLootChance, 1) * 100);
-    if (doubleLootPercent > 0) {
-        const lootLine = document.createElement('p');
-        lootLine.className = 'inventory-effect-line';
-        lootLine.textContent = `Double-loot chance: ${doubleLootPercent}%`;
-        inventoryEffects.appendChild(lootLine);
-    }
 
     inventoryItemsList.innerHTML = '';
 
@@ -348,6 +360,35 @@ function renderInventory() {
             li.appendChild(description);
             inventoryItemsList.appendChild(li);
         });
+    }
+
+    inventoryEffects.innerHTML = '';
+
+    if (totals.speedPercent > 0) {
+        const speedLine = document.createElement('p');
+        speedLine.className = 'inventory-effect-line';
+        speedLine.textContent = `Fight speed: +${totals.speedPercent}%`;
+        inventoryEffects.appendChild(speedLine);
+    }
+
+    const doubleLootPercent = Math.round(Math.min(totals.doubleLootChance, 1) * 100);
+    if (doubleLootPercent > 0) {
+        const lootLine = document.createElement('p');
+        lootLine.className = 'inventory-effect-line';
+        lootLine.textContent = `Double-loot chance: ${doubleLootPercent}%`;
+        inventoryEffects.appendChild(lootLine);
+    }
+
+    const itemsSection = inventoryItemsList.parentElement;
+    const effectsSection = inventoryEffects.parentElement;
+    const parentSection = itemsSection && effectsSection ? itemsSection.parentElement : null;
+    if (
+        itemsSection &&
+        effectsSection &&
+        parentSection &&
+        itemsSection.nextElementSibling !== effectsSection
+    ) {
+        parentSection.insertBefore(itemsSection, effectsSection);
     }
 
     inventoryPanel.hidden = !inventoryUnlocked;
