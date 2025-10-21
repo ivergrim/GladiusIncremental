@@ -12,7 +12,7 @@
             <h2 class="inventory-title">Inventory</h2>
             <section class="inventory-section">
                 <h3 class="inventory-section-title">Effects</h3>
-                <p id="inventory-effects" class="inventory-effects">Fight speed: +0%</p>
+                <div id="inventory-effects" class="inventory-effects"></div>
             </section>
             <section class="inventory-section">
                 <h3 class="inventory-section-title">Owned items</h3>
@@ -34,6 +34,20 @@
                             <p class="item-description">Fight 10% faster.</p>
                         </div>
                         <button id="wooden-club-btn" type="button" class="shop-buy-btn" aria-label="Buy Wooden club for 5 coins">5 coins</button>
+                    </li>
+                    <li class="shop-item" data-item="spiky-club" hidden>
+                        <div class="shop-item-text">
+                            <span class="item-name">Spiky club</span>
+                            <p class="item-description">Fight an additional 10% faster.</p>
+                        </div>
+                        <button id="spiky-club-btn" type="button" class="shop-buy-btn" aria-label="Buy Spiky club for 10 coins">10 coins</button>
+                    </li>
+                    <li class="shop-item" data-item="one-leaf-clover" hidden>
+                        <div class="shop-item-text">
+                            <span class="item-name">One-leaf clover</span>
+                            <p class="item-description">10% chance to gain +1 extra coin.</p>
+                        </div>
+                        <button id="one-leaf-clover-btn" type="button" class="shop-buy-btn" aria-label="Buy One-leaf clover for 10 coins">10 coins</button>
                     </li>
                 </ul>
                 <p id="shop-empty" class="shop-empty" hidden>No items available</p>

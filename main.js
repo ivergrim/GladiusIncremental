@@ -4,15 +4,50 @@ const inventoryPanel = document.getElementById('inventory-panel');
 const inventoryEffects = document.getElementById('inventory-effects');
 const inventoryItemsList = document.getElementById('inventory-items');
 const shopPanel = document.getElementById('shop-panel');
-const woodenClubButton = document.getElementById('wooden-club-btn');
-let woodenClubItem = document.querySelector('[data-item="wooden-club"]');
 const shopEmptyMessage = document.getElementById('shop-empty');
 
+const SHOP_ITEMS = [
+    {
+        id: 'wooden-club',
+        name: 'Wooden club',
+        storageKey: 'owned_wooden_club',
+        cost: 5,
+        description: 'Fight 10% faster.',
+        type: 'speed',
+        speedMultiplier: 0.9
+    },
+    {
+        id: 'spiky-club',
+        name: 'Spiky club',
+        storageKey: 'owned_spiky_club',
+        cost: 10,
+        description: 'Fight an additional 10% faster.',
+        type: 'speed',
+        speedMultiplier: 0.9
+    },
+    {
+        id: 'one-leaf-clover',
+        name: 'One-leaf clover',
+        storageKey: 'owned_one_leaf_clover',
+        cost: 10,
+        description: '10% chance to gain +1 extra coin.',
+        type: 'loot',
+        bonusChance: 0.1
+    }
+];
+
+const shopDom = {};
+SHOP_ITEMS.forEach((item) => {
+    shopDom[item.id] = {
+        row: document.querySelector(`[data-item="${item.id}"]`),
+        button: document.getElementById(`${item.id}-btn`)
+    };
+});
+
 const BASE_FIGHT_DURATION_MS = 4000;
-const WOODEN_CLUB_DURATION_MS = 3600;
-const WOODEN_CLUB_COST = 5;
 const SHOP_UNLOCK_THRESHOLD = 5;
 const INVENTORY_UNLOCK_KEY = 'inventory_unlocked';
+const SHOP_UNLOCK_KEY = 'shop_unlocked';
 
 function loadCoins() {
     const storedValue = localStorage.getItem('coins');
@@ -28,12 +63,12 @@ function saveCoins() {
     localStorage.setItem('coins', String(coins));
 }
 
-function loadWoodenClubOwned() {
-    return localStorage.getItem('owned_wooden_club') === 'true';
+function loadOwned(storageKey) {
+    return localStorage.getItem(storageKey) === 'true';
 }
 
-function saveWoodenClubOwned(value) {
-    localStorage.setItem('owned_wooden_club', value ? 'true' : 'false');
+function saveOwned(storageKey, value) {
+    localStorage.setItem(storageKey, value ? 'true' : 'false');
 }
 
 function loadInventoryUnlocked() {
@@ -45,23 +80,68 @@ function saveInventoryUnlocked(value) {
 }
 
 function loadShopUnlocked() {
-    return localStorage.getItem('shop_unlocked') === 'true';
+    return localStorage.getItem(SHOP_UNLOCK_KEY) === 'true';
 }
 
 function saveShopUnlocked(value) {
-    localStorage.setItem('shop_unlocked', value ? 'true' : 'false');
+    localStorage.setItem(SHOP_UNLOCK_KEY, value ? 'true' : 'false');
 }
 
 let coins = loadCoins();
-let woodenClubOwned = loadWoodenClubOwned();
+const ownedState = {};
+SHOP_ITEMS.forEach((item) => {
+    ownedState[item.id] = loadOwned(item.storageKey);
+});
 let inventoryUnlocked = loadInventoryUnlocked();
 let shopUnlocked = loadShopUnlocked();
 let fightStartTime = null;
 let isFighting = false;
-let activeFightDuration = BASE_FIGHT_DURATION_MS;
+let activeFightDuration = calculateFightDuration();
+
+function isItemOwned(item) {
+    return Boolean(ownedState[item.id]);
+}
+
+function setItemOwned(item, value) {
+    ownedState[item.id] = value;
+    saveOwned(item.storageKey, value);
+}
 
 function updateCounter() {
     coinCounter.textContent = coins;
+}
+
+function updateShopItems() {
+    SHOP_ITEMS.forEach((item) => {
+        const dom = shopDom[item.id];
+        if (!dom) {
+            return;
+        }
+
+        if (isItemOwned(item)) {
+            if (dom.row) {
+                dom.row.remove();
+                dom.row = null;
+            }
+            if (dom.button) {
+                dom.button.disabled = true;
+                dom.button = null;
+            }
+            return;
+        }
+
+        const available = coins >= item.cost;
+        if (dom.row) {
+            dom.row.hidden = !available;
+        }
+        if (dom.button) {
+            dom.button.disabled = !available;
+            dom.button.textContent = `${item.cost} coins`;
+            dom.button.setAttribute('aria-label', `Buy ${item.name} for ${item.cost} coins`);
+        }
+    });
+
+    updateEmptyState();
 }
 
 function updateShopVisibility() {
@@ -83,32 +163,6 @@ function updateEmptyState() {
     shopEmptyMessage.hidden = Boolean(visibleItem);
 }
 
-function updateWoodenClubItem() {
-    if (woodenClubOwned) {
-        if (woodenClubItem && woodenClubItem.parentElement) {
-            woodenClubItem.remove();
-        }
-        woodenClubItem = null;
-        if (woodenClubButton) {
-            woodenClubButton.disabled = true;
-        }
-        updateEmptyState();
-        return;
-    }
-
-    if (!woodenClubItem || !woodenClubButton) {
-        updateEmptyState();
-        return;
-    }
-
-    const itemAvailable = coins >= WOODEN_CLUB_COST;
-    woodenClubItem.hidden = !itemAvailable;
-    woodenClubButton.disabled = !itemAvailable;
-    woodenClubButton.textContent = `${WOODEN_CLUB_COST} coins`;
-    woodenClubButton.setAttribute('aria-label', `Buy Wooden club for ${WOODEN_CLUB_COST} coins`);
-    updateEmptyState();
-}
-
 function unlockShopIfEligible() {
     if (shopUnlocked) {
         return;
@@ -120,23 +174,47 @@ function unlockShopIfEligible() {
     }
 }
 
-function updateInventoryDisplay() {
-    if (!inventoryPanel || !inventoryEffects || !inventoryItemsList) {
+function ensureInventoryUnlocked() {
+    if (inventoryUnlocked) {
         return;
     }
 
-    let fightSpeedBonus = 0;
-    const ownedItems = [];
+    const anyOwned = SHOP_ITEMS.some((item) => isItemOwned(item));
+    if (anyOwned) {
+        inventoryUnlocked = true;
+        saveInventoryUnlocked(true);
+    }
+}
 
-    if (woodenClubOwned) {
-        fightSpeedBonus += 10;
-        ownedItems.push({
-            name: 'Wooden club',
-            description: 'Fight 10% faster.'
-        });
+function updateInventoryDisplay() {
+    if (!inventoryPanel || !inventoryItemsList || !inventoryEffects) {
+        return;
     }
 
-    inventoryEffects.textContent = `Fight speed: +${fightSpeedBonus}%`;
+    ensureInventoryUnlocked();
+
+    const ownedItems = SHOP_ITEMS.filter((item) => isItemOwned(item));
+    const speedItemCount = ownedItems.filter((item) => item.type === 'speed').length;
+    const lootItem = SHOP_ITEMS.find((item) => item.type === 'loot' && isItemOwned(item));
+
+    inventoryEffects.innerHTML = '';
+
+    if (speedItemCount > 0) {
+        const speedLine = document.createElement('p');
+        speedLine.className = 'inventory-effect-line';
+        speedLine.textContent = `Fight speed: +${speedItemCount * 10}%`;
+        inventoryEffects.appendChild(speedLine);
+    }
+
+    if (lootItem) {
+        const lootPercent = Math.round((lootItem.bonusChance || 0) * 100);
+        if (lootPercent > 0) {
+            const lootLine = document.createElement('p');
+            lootLine.className = 'inventory-effect-line';
+            lootLine.textContent = `Double-loot chance: ${lootPercent}%`;
+            inventoryEffects.appendChild(lootLine);
+        }
+    }
 
     inventoryItemsList.innerHTML = '';
 
@@ -148,24 +226,40 @@ function updateInventoryDisplay() {
     } else {
         ownedItems.forEach((item) => {
             const li = document.createElement('li');
+            li.className = 'inventory-item';
+
             const nameSpan = document.createElement('span');
             nameSpan.className = 'inventory-item-name';
             nameSpan.textContent = item.name;
-            const desc = document.createElement('p');
-            desc.className = 'inventory-item-description';
-            desc.textContent = item.description;
+
+            const description = document.createElement('p');
+            description.className = 'inventory-item-description';
+            description.textContent = item.description;
+
             li.appendChild(nameSpan);
-            li.appendChild(desc);
+            li.appendChild(description);
             inventoryItemsList.appendChild(li);
         });
     }
 
-    if (ownedItems.length > 0 && !inventoryUnlocked) {
-        inventoryUnlocked = true;
-        saveInventoryUnlocked(true);
+    if (inventoryPanel) {
+        inventoryPanel.hidden = !inventoryUnlocked;
     }
+}
 
-    inventoryPanel.hidden = !inventoryUnlocked;
+function calculateFightDuration() {
+    return SHOP_ITEMS.reduce((duration, item) => {
+        if (item.type === 'speed' && isItemOwned(item)) {
+            const modifier = typeof item.speedMultiplier === 'number' ? item.speedMultiplier : 1;
+            return duration * modifier;
+        }
+        return duration;
+    }, BASE_FIGHT_DURATION_MS);
+}
+
+function currentLootBonusChance() {
+    const lootItem = SHOP_ITEMS.find((item) => item.type === 'loot' && isItemOwned(item));
+    return lootItem ? lootItem.bonusChance || 0 : 0;
 }
 
 function setProgress(value) {
@@ -173,13 +267,20 @@ function setProgress(value) {
 }
 
 function finishFight() {
-    coins += 1;
+    let coinsEarned = 1;
+    const bonusChance = currentLootBonusChance();
+    if (bonusChance > 0 && Math.random() < bonusChance) {
+        coinsEarned += 1;
+    }
+
+    coins += coinsEarned;
     saveCoins();
     updateCounter();
     unlockShopIfEligible();
-    updateWoodenClubItem();
+    updateShopItems();
     updateShopVisibility();
     updateInventoryDisplay();
+
     fightButton.disabled = false;
     isFighting = false;
     setProgress(0);
@@ -209,7 +310,7 @@ function startFight() {
 
     isFighting = true;
     fightButton.disabled = true;
-    activeFightDuration = woodenClubOwned ? WOODEN_CLUB_DURATION_MS : BASE_FIGHT_DURATION_MS;
+    activeFightDuration = calculateFightDuration();
     setProgress(0);
     fightStartTime = null;
     requestAnimationFrame(stepFight);
@@ -217,12 +318,9 @@ function startFight() {
 
 function initialize() {
     updateCounter();
-    if (woodenClubOwned && !inventoryUnlocked) {
-        inventoryUnlocked = true;
-        saveInventoryUnlocked(true);
-    }
+    ensureInventoryUnlocked();
     unlockShopIfEligible();
-    updateWoodenClubItem();
+    updateShopItems();
     updateShopVisibility();
     updateInventoryDisplay();
 }
@@ -237,25 +335,26 @@ fightButton.addEventListener('click', () => {
     startFight();
 });
 
-if (woodenClubButton) {
-    woodenClubButton.addEventListener('click', () => {
-        if (woodenClubOwned || coins < WOODEN_CLUB_COST) {
+SHOP_ITEMS.forEach((item) => {
+    const dom = shopDom[item.id];
+    if (!dom || !dom.button) {
+        return;
+    }
+
+    dom.button.addEventListener('click', () => {
+        if (isItemOwned(item) || coins < item.cost) {
             return;
         }
 
-        coins -= WOODEN_CLUB_COST;
-        woodenClubOwned = true;
+        coins -= item.cost;
         saveCoins();
-        saveWoodenClubOwned(true);
+        setItemOwned(item, true);
+        ensureInventoryUnlocked();
         unlockShopIfEligible();
-        if (!inventoryUnlocked) {
-            inventoryUnlocked = true;
-            saveInventoryUnlocked(true);
-        }
         updateCounter();
-        updateWoodenClubItem();
+        updateShopItems();
         updateShopVisibility();
         updateInventoryDisplay();
-        activeFightDuration = WOODEN_CLUB_DURATION_MS;
+        activeFightDuration = calculateFightDuration();
     });
-}
+});

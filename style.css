@@ -40,7 +40,7 @@ body {
 }
 
 .inventory-title {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     font-weight: 700;
     text-align: center;
 }
@@ -52,13 +52,18 @@ body {
 }
 
 .inventory-section-title {
-    font-size: 1.05rem;
-    font-weight: 600;
+    font-size: 1.2rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.35);
 }
 
 .inventory-effects {
-    font-size: 1rem;
-    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
 }
 
 .inventory-items {
@@ -70,13 +75,26 @@ body {
     padding: 0;
 }
 
+.inventory-effect-line {
+    font-size: 1rem;
+    margin: 0;
+}
+
+.inventory-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
 .inventory-item-name {
-    font-weight: 600;
+    font-weight: 700;
+    font-size: 1.05rem;
 }
 
 .inventory-item-description {
     font-size: 0.9rem;
-    margin: 0.25rem 0 0;
+    margin: 0;
+    opacity: 0.85;
 }
 
 .inventory-empty-item {
@@ -112,7 +130,6 @@ body {
     font-size: 1rem;
     cursor: pointer;
     transition: background-color 0.2s ease, color 0.2s ease;
-    text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
     isolation: isolate;
 }
 
