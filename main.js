@@ -19,7 +19,7 @@ const ALL_ITEMS = [
         key: 'owned_spiky_club',
         name: 'Spiky club',
         price: 10,
-        description: 'Fight an additional 15% faster.',
+        description: 'Fight 15% faster.',
         effects: { speedMultiplier: 0.85 },
         itemType: 'Weapon'
     },
