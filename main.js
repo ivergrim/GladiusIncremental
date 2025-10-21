@@ -12,21 +12,24 @@ const ALL_ITEMS = [
         name: 'Wooden club',
         price: 5,
         description: 'Fight 10% faster.',
-        effects: { speedMultiplier: 0.9 }
+        effects: { speedMultiplier: 0.9 },
+        itemType: 'Weapon'
     },
     {
         key: 'owned_spiky_club',
         name: 'Spiky club',
         price: 10,
-        description: 'Fight an additional 10% faster.',
-        effects: { speedMultiplier: 0.9 }
+        description: 'Fight an additional 15% faster.',
+        effects: { speedMultiplier: 0.85 },
+        itemType: 'Weapon'
     },
     {
         key: 'owned_one_leaf_clover',
         name: 'One-leaf clover',
         price: 10,
         description: '10% chance to gain +1 extra coin.',
-        effects: { doubleLootChance: 0.1 }
+        effects: { doubleLootChance: 0.1 },
+        itemType: 'Clover'
     }
 ];
 
@@ -35,11 +38,62 @@ const owned = {};
 ALL_ITEMS.forEach((item) => {
     owned[item.key] = localStorage.getItem(item.key) === 'true';
 });
+const purchaseTimestamps = {};
+ALL_ITEMS.forEach((item) => {
+    const stored = localStorage.getItem(`purchased_ts_${item.key}`);
+    purchaseTimestamps[item.key] = stored ? Number(stored) : 0;
+});
+
+function normalizeOwnedByType() {
+    const itemsByType = new Map();
+
+    ALL_ITEMS.forEach((item) => {
+        if (!owned[item.key]) {
+            return;
+        }
+
+        const collection = itemsByType.get(item.itemType);
+        if (collection) {
+            collection.push(item);
+        } else {
+            itemsByType.set(item.itemType, [item]);
+        }
+    });
+
+    itemsByType.forEach((items) => {
+        items.sort((a, b) => {
+            const tsA = purchaseTimestamps[a.key] || 0;
+            const tsB = purchaseTimestamps[b.key] || 0;
+            if (tsA !== tsB) {
+                return tsB - tsA;
+            }
+            return b.price - a.price;
+        });
+
+        const keeper = items[0];
+        let keeperTimestamp = purchaseTimestamps[keeper.key] || 0;
+        if (!keeperTimestamp) {
+            keeperTimestamp = Date.now();
+            purchaseTimestamps[keeper.key] = keeperTimestamp;
+            localStorage.setItem(`purchased_ts_${keeper.key}`, String(keeperTimestamp));
+        }
+
+        for (let i = 1; i < items.length; i += 1) {
+            const removeCandidate = items[i];
+            owned[removeCandidate.key] = false;
+            localStorage.removeItem(removeCandidate.key);
+            purchaseTimestamps[removeCandidate.key] = 0;
+            localStorage.removeItem(`purchased_ts_${removeCandidate.key}`);
+        }
+    });
+}
 
 const revealed = {};
 ALL_ITEMS.forEach((item) => {
     revealed[item.key] = localStorage.getItem(`revealed_${item.key}`) === 'true';
 });
+
+normalizeOwnedByType();
 
 const INVENTORY_UNLOCK_KEY = 'inventory_unlocked';
 const SHOP_UNLOCK_KEY = 'shop_unlocked';
@@ -115,15 +169,29 @@ function renderShop() {
 
     shopList.innerHTML = '';
 
+    const ownsWoodenClub = owned['owned_wooden_club'];
+
     ALL_ITEMS.forEach((item) => {
         if (!revealed[item.key] && coins >= item.price) {
+            revealed[item.key] = true;
+            localStorage.setItem(`revealed_${item.key}`, 'true');
+        }
+        if (
+            item.key === 'owned_spiky_club' &&
+            !revealed[item.key] &&
+            ownsWoodenClub
+        ) {
             revealed[item.key] = true;
             localStorage.setItem(`revealed_${item.key}`, 'true');
         }
     });
 
     const visibleItems = ALL_ITEMS.filter(
-        (item) => !owned[item.key] && (revealed[item.key] || coins >= item.price)
+        (item) =>
+            !owned[item.key] &&
+            (item.key === 'owned_spiky_club'
+                ? ownsWoodenClub || coins >= item.price
+                : revealed[item.key] || coins >= item.price)
     );
 
     visibleItems.forEach((item) => {
@@ -151,6 +219,7 @@ function renderShop() {
         button.dataset.key = item.key;
         button.textContent = `${item.price} coins`;
         button.setAttribute('aria-label', `Buy ${item.name} for ${item.price} coins`);
+        button.disabled = coins < item.price;
         button.addEventListener('click', () => buyItem(item.key));
 
         li.appendChild(textWrapper);
@@ -178,10 +247,25 @@ function buyItem(key) {
         return;
     }
 
+    const itemsToUnequip = ALL_ITEMS.filter(
+        (other) => other.itemType === item.itemType && owned[other.key]
+    );
+
+    itemsToUnequip.forEach((equipped) => {
+        owned[equipped.key] = false;
+        localStorage.removeItem(equipped.key);
+        purchaseTimestamps[equipped.key] = 0;
+        localStorage.removeItem(`purchased_ts_${equipped.key}`);
+    });
+
     coins -= item.price;
     owned[key] = true;
     localStorage.setItem('coins', String(coins));
     localStorage.setItem(key, 'true');
+    const timestamp = Date.now();
+    purchaseTimestamps[key] = timestamp;
+    localStorage.setItem(`purchased_ts_${key}`, String(timestamp));
+    activeFightDuration = calculateFightDuration();
     render();
 }
 
@@ -225,13 +309,30 @@ function renderInventory() {
 
     inventoryItemsList.innerHTML = '';
 
-    if (ownedItems.length === 0) {
+    const latestPerType = {};
+    ownedItems.forEach((item) => {
+        const type = item.itemType || 'Unknown';
+        const timestamp = purchaseTimestamps[item.key] || 0;
+        if (!latestPerType[type] || timestamp > latestPerType[type].timestamp) {
+            latestPerType[type] = { item, timestamp };
+        }
+    });
+
+    const latestItems = Object.values(latestPerType)
+        .map((entry) => entry.item)
+        .sort((a, b) => {
+            const tsA = purchaseTimestamps[a.key] || 0;
+            const tsB = purchaseTimestamps[b.key] || 0;
+            return tsB - tsA;
+        });
+
+    if (latestItems.length === 0) {
         const emptyItem = document.createElement('li');
         emptyItem.className = 'inventory-empty-item';
         emptyItem.textContent = 'None';
         inventoryItemsList.appendChild(emptyItem);
     } else {
-        ownedItems.forEach((item) => {
+        latestItems.forEach((item) => {
             const li = document.createElement('li');
             li.className = 'inventory-item';
 
