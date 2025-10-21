@@ -36,7 +36,8 @@ const ALL_ITEMS = [
         price: 5,
         description: 'Fight 10% faster.',
         effects: { speedMultiplier: 0.9 },
-        itemType: 'Weapon'
+        itemType: 'Weapon',
+        itemLevel: 1
     },
     {
         key: 'owned_spiky_club',
@@ -44,7 +45,8 @@ const ALL_ITEMS = [
         price: 10,
         description: 'Fight 15% faster.',
         effects: { speedMultiplier: 0.85 },
-        itemType: 'Weapon'
+        itemType: 'Weapon',
+        itemLevel: 2
     },
     {
         key: 'owned_one_leaf_clover',
@@ -52,9 +54,18 @@ const ALL_ITEMS = [
         price: 10,
         description: '10% chance to gain +1 extra coin.',
         effects: { doubleLootChance: 0.1 },
-        itemType: 'Clover'
+        itemType: 'Clover',
+        itemLevel: 1
     }
 ];
+
+if (typeof console !== 'undefined') {
+    ALL_ITEMS.forEach((item) => {
+        if (typeof item.itemLevel !== 'number') {
+            console.warn(`Item "${item.name}" is missing itemLevel`);
+        }
+    });
+}
 
 let coins = Number(localStorage.getItem('coins')) || 0;
 const owned = {};
@@ -277,6 +288,21 @@ function buyItem(key) {
     if (coins < item.price) {
         return;
     }
+
+    const lowerTierItems = ALL_ITEMS.filter(
+        (other) =>
+            other.itemType === item.itemType &&
+            typeof other.itemLevel === 'number' &&
+            typeof item.itemLevel === 'number' &&
+            other.itemLevel < item.itemLevel
+    );
+
+    lowerTierItems.forEach((lower) => {
+        if (!retired[lower.key]) {
+            retired[lower.key] = true;
+            localStorage.setItem(`retired_${lower.key}`, 'true');
+        }
+    });
 
     const itemsToUnequip = ALL_ITEMS.filter(
         (other) => other.itemType === item.itemType && owned[other.key]
